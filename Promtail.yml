@@ -1,0 +1,57 @@
+---
+- name: Install Promtail
+  hosts: localhost
+  become_user: root
+  become: true
+  gather_facts: false
+  vars_files: 
+    - vars.yml
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+           - unzip
+        state: present
+        update_cache: yes
+
+    - name: Create /opt/promtail directory
+      file:
+        path: /opt/promtail
+        state: directory
+        mode: '0755'
+    
+    - name: Download Promtail ZIP file
+      get_url:
+        url: "https://github.com/grafana/loki/releases/download/v3.0.0/promtail-linux-amd64.zip"
+        dest: /opt/promtail/promtail-linux-amd64.zip
+
+    - name: Unzip Promtail
+      unarchive:
+        src: /opt/promtail/promtail-linux-amd64.zip
+        dest: /opt/promtail
+        remote_src: yes
+
+    - name: Download Promtail local configuration file
+      get_url:
+        url: https://raw.githubusercontent.com/grafana/loki/main/clients/cmd/promtail/promtail-local-config.yaml
+        dest: /opt/promtail/promtail-local-config.yaml
+
+    - name: Create promtail.service file
+      template:
+        src: promtail.service.j2
+        dest: /etc/systemd/system/promtail.service
+        mode: '0644'
+
+    - name: Reload Systemd Daemon
+      command: systemctl daemon-reload
+
+    - name: Enable Promtail Service
+      systemd:
+        name: promtail
+        enabled: yes
+
+    - name: Start Promtail Service
+      systemd:
+        name: promtail
+        state: started
