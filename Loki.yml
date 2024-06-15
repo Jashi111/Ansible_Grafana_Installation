@@ -1,0 +1,60 @@
+---
+- name: Install Loki
+  hosts: localhost
+  become_user: root
+  become: true
+  gather_facts: false
+  vars_files: 
+    - vars.yml
+  
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+           - unzip
+        state: present
+        update_cache: yes
+
+    - name: Create /opt/loki directory
+      file:
+        path: /opt/loki
+        state: directory
+        mode: '0755'
+
+    - name: Download Loki ZIP file
+      get_url:
+        url: "https://github.com/grafana/loki/releases/download/v3.0.0/loki-linux-amd64.zip"
+        dest: /opt/loki/loki-linux-amd64.zip
+
+    - name: Unzip Loki
+      ansible.builtin.unarchive:
+        src: /opt/loki/loki-linux-amd64.zip
+        dest: /opt/loki
+        remote_src: yes
+
+    - name: Download Loki local configuration file
+      get_url:
+        url: https://raw.githubusercontent.com/grafana/loki/main/cmd/loki/loki-local-config.yaml
+        dest: /opt/loki/loki-local-config.yaml
+
+    - name: Create loki.service file
+      template:
+        src: loki.service.j2
+        dest: /etc/systemd/system/loki.service
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+
+    - name: Enable Loki service
+      systemd:
+        name: loki
+        enabled: yes
+
+    - name: Start Loki service
+      systemd:
+        name: loki
+        state: started
+
+
+    
