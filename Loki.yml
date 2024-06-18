@@ -51,6 +51,19 @@
         name: loki
         enabled: yes
 
+    - name: Insert configuration parameters while preserving indentation
+      blockinfile:
+        path: /opt/loki/loki-local-config.yaml
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        block: |
+          limits_config:
+            retention_period: 744h
+            retention_stream:
+            - selector: '{namespace="dev"}'
+              priority: 1
+              period: 24h
+            per_tenant_override_config: /etc/overrides.yaml
+    
     - name: Start Loki service
       systemd:
         name: loki
