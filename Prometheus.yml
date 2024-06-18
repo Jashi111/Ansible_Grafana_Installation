@@ -1,0 +1,106 @@
+---
+- name: Install Prometheus
+  hosts: localhost
+  become_user: root
+  become: true
+  gather_facts: false
+  vars_files: 
+    - vars.yml
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+           - unzip
+        state: present
+        update_cache: yes
+
+    - name: Create /opt/prometheus directory
+      file:
+        path: /opt/prometheus
+        state: directory
+        mode: '0755'
+
+    - name: Download Prometheus tarball
+      get_url:
+        url: "https://github.com/prometheus/prometheus/releases/download/v2.47.0/prometheus-2.47.0.linux-amd64.tar.gz"
+        dest: /opt/prometheus/prometheus-2.47.0.linux-amd64.tar.gz
+
+    - name: Extract Prometheus tarball
+      unarchive:
+        src: /opt/prometheus/prometheus-2.47.0.linux-amd64.tar.gz
+        dest: /opt/prometheus/
+        remote_src: yes
+
+    - name: Create Prometheus system group
+      group:
+        name: prometheus
+        system: yes
+
+    - name: Create Prometheus system user
+      user:
+        name: prometheus
+        shell: /sbin/nologin
+        group: prometheus
+        system: yes
+
+    - name: Create directories for Prometheus
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+      loop:
+        - /etc/prometheus
+        - /var/lib/prometheus
+
+    - name: Move Prometheus files
+      shell: |
+        mv /opt/prometheus/prometheus-2.47.0.linux-amd64/prometheus /usr/local/bin/
+        mv /opt/prometheus/prometheus-2.47.0.linux-amd64/promtool /usr/local/bin/
+        mv /opt/prometheus/prometheus-2.47.0.linux-amd64/consoles /etc/prometheus/
+        mv /opt/prometheus/prometheus-2.47.0.linux-amd64/console_libraries /etc/prometheus/
+        mv /opt/prometheus/prometheus-2.47.0.linux-amd64/prometheus.yml /etc/prometheus/
+
+    - name: Set ownership for Prometheus files
+      file:
+        path: "{{ item.path }}"
+        state: file
+        owner: prometheus
+        group: prometheus
+      loop:
+        - path: /usr/local/bin/prometheus
+        - path: /usr/local/bin/promtool
+        - path: /etc/prometheus/prometheus.yml
+
+    - name: Set ownership for Prometheus directories
+      file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: prometheus
+        group: prometheus
+        recurse: yes
+      loop:
+        - path: /etc/prometheus/consoles
+        - path: /etc/prometheus/console_libraries
+        - path: /var/lib/prometheus
+
+    - name: Create prometheus.service file
+      template:
+        src: prometheus.service.j2
+        dest: /etc/systemd/system/prometheus.service
+        mode: '0644'
+
+    - name: Reload Systemd Daemon
+      command: systemctl daemon-reload
+
+    - name: Enable prometheus Service
+      systemd:
+        name: prometheus
+        enabled: yes
+
+    - name: Start prometheus Service
+      systemd:
+        name: prometheus
+        state: started
