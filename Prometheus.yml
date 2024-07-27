@@ -100,6 +100,12 @@
         name: prometheus
         enabled: yes
 
+    - name: Configure the prometheus config file
+      template:
+        src: prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+        mode: '0644'       
+
     - name: Start prometheus Service
       systemd:
         name: prometheus

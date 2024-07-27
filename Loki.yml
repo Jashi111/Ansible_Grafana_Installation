@@ -32,10 +32,16 @@
         dest: /opt/loki
         remote_src: yes
 
-    - name: Download Loki local configuration file
-      get_url:
-        url: https://raw.githubusercontent.com/grafana/loki/main/cmd/loki/loki-local-config.yaml
+    # - name: Download Loki local configuration file
+    #   get_url:
+    #     url: https://raw.githubusercontent.com/grafana/loki/main/cmd/loki/loki-local-config.yaml
+    #     dest: /opt/loki/loki-local-config.yaml
+
+    - name: Add new configuration on Loki config file
+      template:
+        src: loki-local-config.yaml.j2
         dest: /opt/loki/loki-local-config.yaml
+        mode: '0644'
 
     - name: Create loki.service file
       template:
@@ -50,19 +56,6 @@
       systemd:
         name: loki
         enabled: yes
-
-    - name: Insert configuration parameters while preserving indentation
-      blockinfile:
-        path: /opt/loki/loki-local-config.yaml
-        marker: "# {mark} ANSIBLE MANAGED BLOCK"
-        block: |
-          limits_config:
-            retention_period: 744h
-            retention_stream:
-            - selector: '{namespace="dev"}'
-              priority: 1
-              period: 24h
-            per_tenant_override_config: /etc/overrides.yaml
     
     - name: Start Loki service
       systemd:

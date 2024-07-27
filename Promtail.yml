@@ -51,6 +51,12 @@
         name: promtail
         enabled: yes
 
+    - name: Configure the Promtail config file
+      template:
+        src: promtail-local-config.yaml.j2
+        dest: /opt/promtail/promtail-local-config.yaml
+        mode: '0644' 
+
     - name: Start Promtail Service
       systemd:
         name: promtail
